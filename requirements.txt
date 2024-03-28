@@ -24,4 +24,5 @@ xarray
 python-dotenv
 tqdm
 
-/home/nvds/Documents/RBINS/ODANext/pandasta
+pandassta
+searegion-detection

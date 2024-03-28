@@ -4,11 +4,11 @@ from datetime import datetime
 from typing import Optional, Tuple
 
 from omegaconf import MISSING
-from pandasta.logging_constants import ISO_STR_FORMAT
-from pandasta.sta import (DbCredentials, FilterEntry, PhenomenonTimeFilter,
+from pandassta.logging_constants import ISO_STR_FORMAT
+from pandassta.sta import (DbCredentials, FilterEntry, PhenomenonTimeFilter,
                           Properties)
 
-from services.searegion.queryregion import DbCredentials
+from searegion_detection.queryregion import DbCredentials
 
 log = logging.getLogger(__name__)
 
