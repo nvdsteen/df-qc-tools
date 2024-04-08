@@ -4,9 +4,10 @@ hydra-core==1.3.2
 numpy==1.26.4
 omegaconf==2.3.0
 pandas==2.2.1
-pandassta==0.0.1
 pytest==8.1.1
 scipy==1.12.0
-searegion_detection==0.0.1
 tqdm==4.66.2
 xarray==2024.2.0
+
+pandassta>=0.0.2
+searegion_detection>=0.0.2
