@@ -96,9 +96,10 @@ def calc_gradient_results(df: pd.DataFrame, groupby: Df) -> pd.DataFrame:
             group[Df.GRADIENT] = None
             return group
         g = np.gradient(
-            group.result, group.phenomenonTime.astype("datetime64[s]").astype("int64")
+            # group.result, group.phenomenonTime.astype("datetime64[s]").astype("int64")
+            group.result, group.phenomenonTime.astype("datetime64[ns]").astype("int64")
         )
-        group[Df.GRADIENT] = g
+        group[Df.GRADIENT] = g*1e9
         return group
 
     df_tmp = df.sort_values(Df.TIME)
