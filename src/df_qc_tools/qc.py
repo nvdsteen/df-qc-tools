@@ -111,17 +111,17 @@ def calc_gradient_results(df: pd.DataFrame, groupby: Df) -> pd.DataFrame:
     return df_out
 
     
-def calc_zscore_results(df: pd.DataFrame, groupby: Df) -> pd.DataFrame:
+def calc_zscore_results(df: pd.DataFrame, groupby: Df, rolling_time_window: str="60min") -> pd.DataFrame:
     def mod_z(df_: pd.DataFrame) -> pd.Series:
         # transformed, _ = stats.yeojohnson(col.values)
         # col[col.columns[0]] = transformed.ravel()
-        roll = df_.sort_values(Df.TIME).rolling("60min", on=Df.TIME, center=True)
+        roll = df_.sort_values(Df.TIME).rolling(rolling_time_window, on=Df.TIME, center=True)
         col = df_[Df.RESULT]
         df_["median"] = roll[Df.RESULT].median()
         df_["abs_dev"] = (df_[Df.RESULT] - df_["median"]).abs()
         # med_abs_dev = np.median(np.abs(col - med_col)) 
         # med_abs_dev = np.abs(roll[Df.RESULT] - med_col).median() # type: ignore
-        roll = df_.sort_values(Df.TIME).rolling("60min", on=Df.TIME, center=True)
+        roll = df_.sort_values(Df.TIME).rolling(rolling_time_window, on=Df.TIME, center=True)
         df_["med_abs_dev"] = roll["abs_dev"].median()
         mod_z = 0.6745 * ((col - df_["median"]) / df_["med_abs_dev"])
         mod_z.loc[df_["med_abs_dev"] == 0] = ((col - df_["median"]) / (1.253314*roll["abs_dev"].mean()))
@@ -130,12 +130,12 @@ def calc_zscore_results(df: pd.DataFrame, groupby: Df) -> pd.DataFrame:
     def _calc_zscore_results(df, groupby):
         group = df.groupby(by=groupby, group_keys=False)
         # group = df[[Df.TIME, Df.RESULT, groupby]].groupby(by=groupby, group_keys=False)
-        # z = group[[Df.TIME, Df.RESULT]].rolling("1h", on=Df.TIME, center=True).apply(stats.zscore)
+        # z = group[[Df.TIME, Df.RESULT]].rolling(rolling_time_window=Df.TIME, center=True).apply(stats.zscore)
         z = group[[Df.TIME, Df.RESULT]].apply(mod_z)
         # z = group[[Df.RESULT]].apply(stats.zscore)
         return z
     df[Df.ZSCORE] = _calc_zscore_results(df, groupby=[Df.DATASTREAM_ID])
-    # roll_median = df.loc[:, [Df.RESULT, Df.DATASTREAM_ID, Df.TIME]].sort_values(Df.TIME).rolling("1h", on=Df.TIME, center=True).median()
+    # roll_median = df.loc[:, [Df.RESULT, Df.DATASTREAM_ID, Df.TIME]].sort_values(Df.TIME).rolling(rolling_time_window, on=Df.TIME, center=True).median()
     # df.loc[:, [Df.RESULT, Df.TIME]].sort_values(Df.TIME)
     # df[Df.ZSCORE]
     # roll_median = roll.median()

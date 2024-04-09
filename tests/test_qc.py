@@ -588,9 +588,11 @@ def test_qc_range(df_testing):
     pdt.assert_series_equal(bool_ref, bool_range, check_names=False)
 
 
-def test_qc_outlier(df_outliers):
-    df = calc_zscore_results(df_outliers, groupby=Df.DATASTREAM_ID)
-    df[["qc_zscore_min", "qc_zscore_max"]] = [-25, 25]
+@pytest.mark.parametrize("zscore", [25])
+@pytest.mark.parametrize("rolling_time_window", ["60min"])
+def test_qc_outlier(df_outliers, zscore, rolling_time_window):
+    df = calc_zscore_results(df_outliers, groupby=Df.DATASTREAM_ID, rolling_time_window=rolling_time_window)
+    df[["qc_zscore_min", "qc_zscore_max"]] = [-1*zscore, zscore]
     # df[["qc_zscore_min", "qc_zscore_max"]] = [-3.5, 3.5]
     bool_zscore = get_bool_out_of_range(df=df, qc_on=Df.ZSCORE, qc_type="zscore")
     assert bool_zscore.sum() == 9
