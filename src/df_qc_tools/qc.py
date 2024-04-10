@@ -115,6 +115,11 @@ def calc_zscore_results(df: pd.DataFrame, groupby: Df, rolling_time_window: str=
     def mod_z(df_: pd.DataFrame) -> pd.Series:
         # transformed, _ = stats.yeojohnson(col.values)
         # col[col.columns[0]] = transformed.ravel()
+        df_ = df_.loc[df_.get(Df.QC_FLAG, pd.Series(0, index=df_.index)) <= 2]
+        # try:
+            # df_ = df_.loc[df_[Df.QC_FLAG] <= 2]
+        # except KeyError as e:
+            # pass
         roll = df_.sort_values(Df.TIME).rolling(rolling_time_window, on=Df.TIME, center=True)
         col = df_[Df.RESULT]
         df_["median"] = roll[Df.RESULT].median()
