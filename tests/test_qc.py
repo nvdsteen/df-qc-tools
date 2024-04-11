@@ -13,11 +13,19 @@ from geopy import Point as gp_point
 from pandassta.df import CAT_TYPE, Df, QualityFlags, df_type_conversions
 
 from src.df_qc_tools.qc import (
-    calc_gradient_results, calc_zscore_results, combine_dicts,
-    get_bool_exceed_max_acceleration, get_bool_exceed_max_velocity,
-    get_bool_land_region, get_bool_null_region, get_bool_out_of_range,
-    get_bool_spacial_outlier_compared_to_median, get_qc_flag_from_bool,
-    qc_dependent_quantity_base, qc_dependent_quantity_secondary)
+    calc_gradient_results,
+    calc_zscore_results,
+    combine_dicts,
+    get_bool_exceed_max_acceleration,
+    get_bool_exceed_max_velocity,
+    get_bool_land_region,
+    get_bool_null_region,
+    get_bool_out_of_range,
+    get_bool_spacial_outlier_compared_to_median,
+    get_qc_flag_from_bool,
+    qc_dependent_quantity_base,
+    qc_dependent_quantity_secondary,
+)
 from searegion_detection.queryregion import build_points_query
 
 
@@ -124,7 +132,9 @@ def df_testing() -> gpd.GeoDataFrame:
                 ),  # type: ignore
                 dtype=float,
             ),  # type: ignore
-            Df.OBSERVATION_TYPE: datastream_id_series.apply(lambda x: ds_id_type_dict[x]),
+            Df.OBSERVATION_TYPE: datastream_id_series.apply(
+                lambda x: ds_id_type_dict[x]
+            ),
         }
     )
     return df_out
@@ -591,11 +601,36 @@ def test_qc_range(df_testing):
 @pytest.mark.parametrize("zscore", [25])
 @pytest.mark.parametrize("rolling_time_window", ["60min"])
 def test_qc_outlier(df_outliers, zscore, rolling_time_window):
-    df = calc_zscore_results(df_outliers, groupby=Df.DATASTREAM_ID, rolling_time_window=rolling_time_window)
-    df[["qc_zscore_min", "qc_zscore_max"]] = [-1*zscore, zscore]
+    df_outliers[Df.QC_FLAG] = QualityFlags(0)
+    df = calc_zscore_results(
+        df_outliers, groupby=Df.DATASTREAM_ID, rolling_time_window=rolling_time_window
+    )
+    df[["qc_zscore_min", "qc_zscore_max"]] = [-1 * zscore, zscore]
     # df[["qc_zscore_min", "qc_zscore_max"]] = [-3.5, 3.5]
     bool_zscore = get_bool_out_of_range(df=df, qc_on=Df.ZSCORE, qc_type="zscore")
     assert bool_zscore.sum() == 9
+
+
+@pytest.mark.parametrize("zscore", [25])
+@pytest.mark.parametrize("rolling_time_window", ["60min"])
+def test_qc_outlier_qcflags(df_outliers, zscore, rolling_time_window):
+    df = calc_zscore_results(
+        df_outliers, groupby=Df.DATASTREAM_ID, rolling_time_window=rolling_time_window
+    )
+    df[["qc_zscore_min", "qc_zscore_max"]] = [-1 * zscore, zscore]
+    # df[["qc_zscore_min", "qc_zscore_max"]] = [-3.5, 3.5]
+    bool_zscore = get_bool_out_of_range(df=df, qc_on=Df.ZSCORE, qc_type="zscore")
+    assert bool_zscore.sum() == 4
+
+
+def test_zscore_flag_exclusion(df_testing):
+    df_testing[Df.DATASTREAM_ID] = 0
+    df_testing[Df.RESULT] = pd.Series(range(df_testing.shape[0]))
+    df_all0 = calc_zscore_results(df_testing, groupby=Df.DATASTREAM_ID)
+    assert not df_all0[Df.ZSCORE].isnull().any()
+    df_testing.loc[5, Df.QC_FLAG] = QualityFlags(4)
+    df_one4 = calc_zscore_results(df_testing, groupby=Df.DATASTREAM_ID)
+    assert df_one4[Df.ZSCORE].isnull().sum() == 1
 
 
 @pytest.mark.parametrize("n", tuple(range(len(base_list_region))))

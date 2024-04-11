@@ -12,8 +12,13 @@ import xarray as xr
 from scipy import stats
 from tqdm import tqdm
 
-from pandassta.df import (Df, QualityFlags, get_acceleration_series, get_distance_geopy_series,
-                         get_velocity_series)
+from pandassta.df import (
+    Df,
+    QualityFlags,
+    get_acceleration_series,
+    get_distance_geopy_series,
+    get_velocity_series,
+)
 from pandassta.df import CAT_TYPE
 from pandassta.logging_constants import TQDM_DESC_FORMAT
 from pandassta.logging_constants import TQDM_BAR_FORMAT
@@ -42,7 +47,7 @@ def get_bool_out_of_range(
     for ci in [qc_type_max, qc_type_min]:
         ci_i = ci
         if nb_levels > 1:
-            ci_i =(ci,) + ("",)*(nb_levels-1)
+            ci_i = (ci,) + ("",) * (nb_levels - 1)
         if ci_i not in columns0:
             columns0 += [ci_i]
     df = df.reindex(columns=columns0)
@@ -97,9 +102,10 @@ def calc_gradient_results(df: pd.DataFrame, groupby: Df) -> pd.DataFrame:
             return group
         g = np.gradient(
             # group.result, group.phenomenonTime.astype("datetime64[s]").astype("int64")
-            group.result, group.phenomenonTime.astype("datetime64[ns]").astype("int64")
+            group.result,
+            group.phenomenonTime.astype("datetime64[ns]").astype("int64"),
         )
-        group[Df.GRADIENT] = g*1e9
+        group[Df.GRADIENT] = g * 1e9
         return group
 
     df_tmp = df.sort_values(Df.TIME)
@@ -110,41 +116,62 @@ def calc_gradient_results(df: pd.DataFrame, groupby: Df) -> pd.DataFrame:
     df_out = df.join(df_tmp[Df.GRADIENT])
     return df_out
 
-    
-def calc_zscore_results(df: pd.DataFrame, groupby: Df, rolling_time_window: str="60min") -> pd.DataFrame:
+
+def calc_zscore_results(
+    df: pd.DataFrame, groupby: Df, rolling_time_window: str = "60min"
+) -> pd.DataFrame:
+    df_out = df.loc[:]
     def mod_z(df_: pd.DataFrame) -> pd.Series:
         # transformed, _ = stats.yeojohnson(col.values)
         # col[col.columns[0]] = transformed.ravel()
-        df_ = df_.loc[df_.get(Df.QC_FLAG, pd.Series(0, index=df_.index)) <= 2]
+        # df_ = df_.loc[df_.get(Df.QC_FLAG, pd.Series(0, index=df_.index)) <= 2]
         # try:
-            # df_ = df_.loc[df_[Df.QC_FLAG] <= 2]
+        # df_ = df_.loc[df_[Df.QC_FLAG] <= 2]
         # except KeyError as e:
-            # pass
-        roll = df_.sort_values(Df.TIME).rolling(rolling_time_window, on=Df.TIME, center=True)
+        # pass
+        roll = df_.sort_values(Df.TIME).rolling(
+            rolling_time_window, on=Df.TIME, center=True
+        )
         col = df_[Df.RESULT]
         df_["median"] = roll[Df.RESULT].median()
         df_["abs_dev"] = (df_[Df.RESULT] - df_["median"]).abs()
-        # med_abs_dev = np.median(np.abs(col - med_col)) 
+        # med_abs_dev = np.median(np.abs(col - med_col))
         # med_abs_dev = np.abs(roll[Df.RESULT] - med_col).median() # type: ignore
-        roll = df_.sort_values(Df.TIME).rolling(rolling_time_window, on=Df.TIME, center=True)
+        roll = df_.sort_values(Df.TIME).rolling(
+            rolling_time_window, on=Df.TIME, center=True
+        )
         df_["med_abs_dev"] = roll["abs_dev"].median()
-        mod_z = 0.6745 * ((col - df_["median"]) / df_["med_abs_dev"])
-        mod_z.loc[df_["med_abs_dev"] == 0] = ((col - df_["median"]) / (1.253314*roll["abs_dev"].mean()))
+        # (X-MED)/(1.486*MAD)
+        mod_z = (col-df_["median"])/(1.486*df_["med_abs_dev"])
+        # mod_z = 0.6745 * ((col - df_["median"]) / df_["med_abs_dev"])
+        mod_z.loc[df_["med_abs_dev"] == 0] = (col - df_["median"]) / (
+            1.253314 * roll["abs_dev"].mean()
+        )
         # return np.abs(mod_z)
         return mod_z
+
     def _calc_zscore_results(df, groupby):
-        group = df.groupby(by=groupby, group_keys=False)
+        # group = df.groupby(by=groupby, group_keys=False)
+        # group = df.loc[df.get(Df.QC_FLAG, pd.Series(0, index=df.index).map(QualityFlags)) <= QualityFlags(2)].groupby(
+        df_ = df.loc[:]
+        df_.loc[df_.get(Df.QC_FLAG, pd.Series(0, index=df_.index).map(QualityFlags)) >= QualityFlags.PROBABLY_BAD, Df.RESULT] = pd.NA
+        group = df_.groupby(
+            by=groupby, group_keys=False
+        )
         # group = df[[Df.TIME, Df.RESULT, groupby]].groupby(by=groupby, group_keys=False)
         # z = group[[Df.TIME, Df.RESULT]].rolling(rolling_time_window=Df.TIME, center=True).apply(stats.zscore)
         z = group[[Df.TIME, Df.RESULT]].apply(mod_z)
         # z = group[[Df.RESULT]].apply(stats.zscore)
+        if group.ngroups == 1:
+            return z.T
         return z
-    df[Df.ZSCORE] = _calc_zscore_results(df, groupby=[Df.DATASTREAM_ID])
+
+    df_out[Df.ZSCORE] = _calc_zscore_results(df_out, groupby=[Df.DATASTREAM_ID])
     # roll_median = df.loc[:, [Df.RESULT, Df.DATASTREAM_ID, Df.TIME]].sort_values(Df.TIME).rolling(rolling_time_window, on=Df.TIME, center=True).median()
     # df.loc[:, [Df.RESULT, Df.TIME]].sort_values(Df.TIME)
     # df[Df.ZSCORE]
     # roll_median = roll.median()
-    return df
+    return df_out
 
 
 def dependent_quantity_merge_asof(
@@ -371,13 +398,12 @@ def get_bool_spacial_outlier_compared_to_median(
     #     .apply(delta)
     # )
     # rolling_time = (rolling_t.max() - rolling_t.min()).dt
-    rolling_t = (
-        df_time_sorted.loc[:, [Df.TIME, "dt"]]
-        .rolling(time_window, on=Df.TIME, center=True)
+    rolling_t = df_time_sorted.loc[:, [Df.TIME, "dt"]].rolling(
+        time_window, on=Df.TIME, center=True
     )
-    rolling_time = (rolling_t.max() - rolling_t.min())
+    rolling_time = rolling_t.max() - rolling_t.min()
 
-    rolling_time[Df.TIME] =  df_time_sorted[Df.TIME]
+    rolling_time[Df.TIME] = df_time_sorted[Df.TIME]
 
     rolling_median = rolling_median.reindex(index=rolling_time.index, fill_value=None)
     rolling_median.loc[entries_excluded_from_calculations, Df.TIME] = rolling_time.loc[
@@ -528,7 +554,7 @@ class QCFlagConfig:
             )
         ).astype(CAT_TYPE)
         log.info(f"Execution {self.label} qc result: {self.bool_series.sum()} True")
-        self.series_out = series_out # type: ignore
+        self.series_out = series_out  # type: ignore
         return self.series_out
 
 
