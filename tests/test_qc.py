@@ -631,6 +631,19 @@ def test_zscore_flag_exclusion(df_testing):
     df_testing.loc[5, Df.QC_FLAG] = QualityFlags(4)
     df_one4 = calc_zscore_results(df_testing, groupby=Df.DATASTREAM_ID)
     assert df_one4[Df.ZSCORE].isnull().sum() == 1
+    assert not df_one4[Df.RESULT].isnull().any()
+    assert not df_testing[Df.RESULT].isnull().any()
+
+
+def test_zscore_flag_exclusion2(df_testing):
+    df_testing[Df.DATASTREAM_ID] = 0
+    df_testing.loc[5, Df.QC_FLAG] = QualityFlags(4)
+    df_testing = calc_zscore_results(df_testing, groupby=Df.DATASTREAM_ID)
+    assert df_testing[Df.ZSCORE].isnull().sum() == 1
+    assert not df_testing[Df.RESULT].isnull().any()
+    df_testing[Df.ZSCORE] = calc_zscore_results(df_testing, Df.DATASTREAM_ID, rolling_time_window="60min")[Df.ZSCORE]
+    assert not df_testing[Df.RESULT].isnull().any()
+    assert df_testing[Df.ZSCORE].isnull().sum() == 1
 
 
 @pytest.mark.parametrize("n", tuple(range(len(base_list_region))))

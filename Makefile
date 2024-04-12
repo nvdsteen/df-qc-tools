@@ -15,6 +15,14 @@ create_venv:
 	echo $(CURDIR)/src/ >> $(VENV_NAME)/lib/$(PYTHON_VERSION)/site-packages/own.pth
 	echo $(CURDIR)/tests/ >> $(VENV_NAME)/lib/$(PYTHON_VERSION)/site-packages/own.pth
 
+.PHONY: build
+build:
+	$(PYTHON) -m build .
+
+.PHONY: publish
+publish:
+	$(PYTHON) -m twine upload --skip-existing dist/*
+
 .PHONY: ipython
 ipython:
 	$(VENV_NAME)/bin/ipython

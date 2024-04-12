@@ -94,6 +94,7 @@ def qc_region(
 # TODO: refactor, complete df is not needed
 def calc_gradient_results(df: pd.DataFrame, groupby: Df) -> pd.DataFrame:
     log.info(f"Start gradient calculations per {groupby}.")
+    df_copy = deepcopy(df)
 
     def grad_function(group):
         nb_row, nb_columns = group.shape
@@ -108,19 +109,19 @@ def calc_gradient_results(df: pd.DataFrame, groupby: Df) -> pd.DataFrame:
         group[Df.GRADIENT] = g * 1e9
         return group
 
-    df_tmp = df.sort_values(Df.TIME)
-    df_grouped = df.groupby(by=[groupby], group_keys=False)
+    df_tmp = df_copy.sort_values(Df.TIME)
+    df_grouped = df_copy.groupby(by=[groupby], group_keys=False)
     df_tmp = df_grouped[[str(Df.RESULT), str(Df.TIME)]].apply(
         grad_function
     )  # casted to string to avoid type error
-    df_out = df.join(df_tmp[Df.GRADIENT])
+    df_out = df_copy.join(df_tmp[Df.GRADIENT])
     return df_out
 
 
 def calc_zscore_results(
     df: pd.DataFrame, groupby: Df, rolling_time_window: str = "60min"
 ) -> pd.DataFrame:
-    df_out = df.loc[:]
+    df_copy = deepcopy(df)
     def mod_z(df_: pd.DataFrame) -> pd.Series:
         # transformed, _ = stats.yeojohnson(col.values)
         # col[col.columns[0]] = transformed.ravel()
@@ -166,12 +167,13 @@ def calc_zscore_results(
             return z.T
         return z
 
-    df_out[Df.ZSCORE] = _calc_zscore_results(df_out, groupby=[Df.DATASTREAM_ID])
+    df_copy[Df.ZSCORE] = _calc_zscore_results(df_copy, groupby=[Df.DATASTREAM_ID])
+    df[Df.ZSCORE] = df_copy[Df.ZSCORE]
     # roll_median = df.loc[:, [Df.RESULT, Df.DATASTREAM_ID, Df.TIME]].sort_values(Df.TIME).rolling(rolling_time_window, on=Df.TIME, center=True).median()
     # df.loc[:, [Df.RESULT, Df.TIME]].sort_values(Df.TIME)
     # df[Df.ZSCORE]
     # roll_median = roll.median()
-    return df_out
+    return df
 
 
 def dependent_quantity_merge_asof(
