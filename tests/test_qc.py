@@ -134,6 +134,7 @@ def df_testing() -> gpd.GeoDataFrame:
             ),  # type: ignore
             Df.OBSERVATION_TYPE: datastream_id_series.apply(
                 lambda x: ds_id_type_dict[x]
+
             ),
         }
     )
@@ -552,6 +553,36 @@ def test_qc_dependent_quantities(df_testing, n):
     df_testing = df_testing.set_index(Df.IOT_ID)
     df_testing.update({Df.QC_FLAG: qc_flag_update})
     assert df_testing[Df.QC_FLAG].value_counts().to_dict() == qc_flag_count_ref
+
+
+@pytest.mark.parametrize("n", tuple(range(len(base_list_region))))
+def test_qc_dependent_quantities_duplicates(df_testing, n):
+    # setup ref count
+    qc_flag_count_ref = {
+        QualityFlags.GOOD: df_testing.shape[0] - 2,
+        QualityFlags.BAD: 3,
+    }
+
+    # setup df
+    df_testing[Df.QC_FLAG] = QualityFlags.GOOD
+
+    idx_ = df_testing.loc[df_testing[Df.DATASTREAM_ID] == 0].index[n]
+    df_testing.loc[idx_, Df.QC_FLAG] = QualityFlags.BAD
+
+    idx_duplicate = df_testing.loc[df_testing[Df.DATASTREAM_ID] == 1].index[n]
+    df_testing = pd.concat([df_testing, df_testing[df_testing.index==idx_duplicate]], ignore_index=True)
+
+    df_testing.loc[df_testing.index.max(), Df.IOT_ID] = df_testing.loc[df_testing.index.max(), Df.IOT_ID] + df_testing[Df.IOT_ID].max()
+    df_testing = df_testing.sort_values(Df.TIME).reset_index(drop=True)
+
+    # perform qc check
+    qc_flag_update = qc_dependent_quantity_base(
+        df_testing, independent=0, dependent=1, dt_tolerance="0.5s"
+    )
+    df_testing = df_testing.set_index(Df.IOT_ID)
+    df_testing.update({Df.QC_FLAG: qc_flag_update}) # type: ignore
+    assert df_testing[Df.QC_FLAG].value_counts().to_dict() == qc_flag_count_ref
+
 
 
 @pytest.mark.parametrize("n", tuple(range(len(base_list_region))))

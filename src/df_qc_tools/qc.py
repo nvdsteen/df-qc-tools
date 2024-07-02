@@ -254,6 +254,17 @@ def get_bool_flagged_dependent_quantity(
     return bool_
 
 
+def drop_duplicates_df_unpivot(df_unpivot: pd.DataFrame, independent: int, dependent: int) -> pd.DataFrame:
+    if df_unpivot.index.has_duplicates:
+        datastreams_with_duplicate_idx = list(df_unpivot[df_unpivot.index.duplicated(keep='first')][Df.DATASTREAM_ID].unique())
+        log.warning(f"Duplicated {Df.IOT_ID} found for {Df.DATASTREAM_ID} {datastreams_with_duplicate_idx}.")
+        log.warning(f"This might be due to duplicate entries for {set([independent, dependent]).difference(set(datastreams_with_duplicate_idx))}.")
+        log.warning(f"Duplicates will be removed.")
+        df_unpivot = df_unpivot[~df_unpivot.index.duplicated(keep='first')]
+
+    return df_unpivot
+
+
 def qc_dependent_quantity_base(
     df: pd.DataFrame,
     independent: int,
@@ -277,7 +288,8 @@ def qc_dependent_quantity_base(
     ]
 
     df_unpivot = df_pivot.loc[mask].stack(future_stack=True).dropna(subset=Df.IOT_ID).reset_index().set_index(Df.IOT_ID)  # type: ignore
-    df_unpivot = df_unpivot[~df_unpivot.index.duplicated(keep='first')]
+    df_unpivot = drop_duplicates_df_unpivot(df_unpivot=df_unpivot, independent=independent, dependent=dependent)
+    
     # df_unpivot = df_pivot.loc[mask].stack().reset_index().set_index(Df.IOT_ID)
     df = df.set_index(Df.IOT_ID)
     # TODO: refactor
@@ -319,8 +331,10 @@ def qc_dependent_quantity_secondary(
 
     df_pivot = df_pivot.drop(["qc_drange_min", "qc_drange_max"], axis=1, level=0)
     df_unpivot = df_pivot.stack(future_stack=True).dropna(subset=Df.IOT_ID).reset_index().set_index(Df.IOT_ID)  # type: ignore
+
+    df_unpivot = drop_duplicates_df_unpivot(df_unpivot=df_unpivot, independent=independent, dependent=dependent)
+
     # df_unpivot = df_pivot.stack(future_stack=True).reset_index().set_index(Df.IOT_ID)  # type: ignore
-    df_unpivot = df_unpivot[~df_unpivot.index.duplicated(keep='first')]
     df = df.set_index(Df.IOT_ID)
     df.loc[df_unpivot.index, Df.QC_FLAG] = df_unpivot[Df.QC_FLAG]
     s_out = df.loc[df_unpivot.index, Df.QC_FLAG]
