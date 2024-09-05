@@ -5,8 +5,7 @@ from typing import Optional, Tuple
 
 from omegaconf import MISSING
 from pandassta.logging_constants import ISO_STR_FORMAT
-from pandassta.sta import (DbCredentials, FilterEntry, PhenomenonTimeFilter,
-                          Properties)
+from pandassta.sta import DbCredentials, FilterEntry, PhenomenonTimeFilter, Properties
 
 from searegion_detection.queryregion import DbCredentials
 
@@ -70,10 +69,15 @@ class ResetConfig:
 
 
 @dataclass
+class OtherConfig:
+    count_observations: bool = field(default=False)
+
+
+@dataclass
 class DateConfig:
     format: str
 
-    
+
 @dataclass
 class TimeConfig:
     start: str
@@ -86,8 +90,8 @@ class TimeConfig:
 @dataclass
 class HydraRunConfig:
     dir: str
-    
-    
+
+
 @dataclass
 class HydraConfig:
     run: HydraRunConfig
@@ -100,6 +104,7 @@ class QCconf:
     hydra: HydraConfig
     data_api: DataApi
     reset: ResetConfig
+    other: OtherConfig
     location: LocationConfig
     QC_dependent: list[QcDependentEntry]
     QC: dict[str, QcEntry]
@@ -127,5 +132,3 @@ def get_date_from_string(
 ) -> str:
     date_out = datetime.strptime(str(str_in), str_format_in)
     return date_out.strftime(str_format_out)
-
-
