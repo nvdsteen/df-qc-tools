@@ -5,7 +5,7 @@ from typing import Optional, Tuple
 
 from omegaconf import MISSING
 from pandassta.logging_constants import ISO_STR_FORMAT
-from pandassta.sta import DbCredentials, FilterEntry, PhenomenonTimeFilter, Properties
+from pandassta.sta import DbCredentials, FilterEntry, PhenomenonTimeFilter, Properties, Entities
 
 from searegion_detection.queryregion import DbCredentials
 
@@ -111,9 +111,9 @@ class QCconf:
     QC_global: dict[str, QcEntry] = field(default_factory=dict)
 
 
-def filter_cfg_to_query(filter_cfg: FilterEntry) -> str:
+def filter_cfg_to_query(filter_cfg: FilterEntry, level: Entities = Entities.OBSERVATIONS) -> str:
     filter_condition = ""
-    if filter_cfg:
+    if filter_cfg and level == Entities.OBSERVATIONS:
         range = filter_cfg.phenomenonTime.range
         format = filter_cfg.phenomenonTime.format
 
@@ -123,6 +123,11 @@ def filter_cfg_to_query(filter_cfg: FilterEntry) -> str:
             f"{Properties.PHENOMENONTIME} gt {t0.strftime(ISO_STR_FORMAT)} and "
             f"{Properties.PHENOMENONTIME} lt {t1.strftime(ISO_STR_FORMAT)}"
         )
+    if filter_cfg and level == Entities.DATASTREAMS:
+        list_datastream_ids = [idi for idi in filter_cfg.Datastreams.ids]
+        list_filter_str = [f"{Properties.IOT_ID} eq {idi}" for idi in list_datastream_ids]
+        filter_condition = " and ".join(list_filter_str)
+        filter_condition = f"{Properties.IOT_ID} in {str(tuple(list_datastream_ids)).replace(',)',')')}"
     log.debug(f"Configure filter: {filter_condition=}")
     return filter_condition
 
