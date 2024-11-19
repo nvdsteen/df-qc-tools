@@ -123,7 +123,7 @@ def filter_cfg_to_query(filter_cfg: FilterEntry, level: Entities = Entities.OBSE
             f"{Properties.PHENOMENONTIME} gt {t0.strftime(ISO_STR_FORMAT)} and "
             f"{Properties.PHENOMENONTIME} lt {t1.strftime(ISO_STR_FORMAT)}"
         )
-    if filter_cfg and level == Entities.DATASTREAMS:
+    if filter_cfg and level == Entities.DATASTREAMS and filter_cfg.get("Datastreams", {}).get("ids", None):
         list_datastream_ids = [idi for idi in filter_cfg.Datastreams.ids]
         list_filter_str = [f"{Properties.IOT_ID} eq {idi}" for idi in list_datastream_ids]
         filter_condition = " and ".join(list_filter_str)
