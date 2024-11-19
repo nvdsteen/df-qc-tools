@@ -3,8 +3,7 @@ from hydra import compose, initialize
 from omegaconf import DictConfig
 from pandassta.sta_requests import set_sta_url
 
-from src.df_qc_tools.config import (QCconf, filter_cfg_to_query,
-                                                  get_date_from_string)
+from src.df_qc_tools.config import QCconf, filter_cfg_to_query, get_date_from_string
 
 
 @pytest.fixture(scope="session")
@@ -27,6 +26,9 @@ class TestConfig:
             out == "phenomenonTime gt 1002-01-01T00:00:00.000000Z and "
             "phenomenonTime lt 3003-01-01T00:00:00.000000Z"
         )
+
+    def test_filter_datastreams_cfg_to_query(self, cfg: QCconf):
+        assert False
 
     def test_get_date_from_string(self):
         # date_o = get_date_from_string("2023-04-01 12:15", "%Y-%m-%d %H:%M", "%Y%m%d")
