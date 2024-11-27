@@ -9,5 +9,5 @@ scipy==1.12.0
 tqdm==4.66.2
 xarray==2024.2.0
 
-pandassta>=0.0.9
+pandassta>=0.0.11
 searegion_detection>=0.0.3
