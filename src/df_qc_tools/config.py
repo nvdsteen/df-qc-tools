@@ -29,6 +29,7 @@ class DataApi:
     things: ThingConfig
     filter: FilterEntry
     auth: SensorThingsAuth
+    dry_run: bool = field(default=False)
 
 
 @dataclass
@@ -71,6 +72,7 @@ class ResetConfig:
 @dataclass
 class OtherConfig:
     count_observations: bool = field(default=False)
+    write_flags_to_json: bool = field(default=False)
 
 
 @dataclass
