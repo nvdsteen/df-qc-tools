@@ -271,6 +271,7 @@ def qc_dependent_quantity_base(
     dependent: int,
     dt_tolerance: str,
     flag_when_missing: QualityFlags | None = QualityFlags.BAD,
+    return_only_dependent: bool = False,
 ) -> pd.Series:
     df_tmp = strip_df_to_minimal_required_dependent_quantity(
         df, independent=independent, dependent=dependent
@@ -293,7 +294,9 @@ def qc_dependent_quantity_base(
     # df_unpivot = df_pivot.loc[mask].stack().reset_index().set_index(Df.IOT_ID)
     df = df.set_index(Df.IOT_ID)
     # TODO: refactor
-    mask_unpivot_notnan = ~df_unpivot[Df.QC_FLAG].isna()
+    if return_only_dependent:
+        df_unpivot = df_unpivot.loc[df_unpivot[Df.DATASTREAM_ID] == dependent]
+    mask_unpivot_notnan = (~df_unpivot[Df.QC_FLAG].isna())
     idx_unpivot_notnan = df_unpivot.loc[mask_unpivot_notnan, Df.QC_FLAG].index.astype(
         int
     )  # the conversion to int is needed because nan is float, and this column is set to float for some reason
