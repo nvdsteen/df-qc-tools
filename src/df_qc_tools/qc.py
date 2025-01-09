@@ -1,27 +1,25 @@
 import json
 import logging
+import operator
 from copy import deepcopy
 from dataclasses import dataclass, field
-import operator
 from typing import Callable
 
 import geopandas as gpd
 import numpy as np
 import pandas as pd
 import xarray as xr
-from scipy import stats
-from tqdm import tqdm
-
 from pandassta.df import (
+    CAT_TYPE,
     Df,
     QualityFlags,
     get_acceleration_series,
     get_distance_geopy_series,
     get_velocity_series,
 )
-from pandassta.df import CAT_TYPE
-from pandassta.logging_constants import TQDM_DESC_FORMAT
-from pandassta.logging_constants import TQDM_BAR_FORMAT
+from pandassta.logging_constants import TQDM_BAR_FORMAT, TQDM_DESC_FORMAT
+from scipy import stats
+from tqdm import tqdm
 
 log = logging.getLogger(__name__)
 
@@ -122,6 +120,7 @@ def calc_zscore_results(
     df: pd.DataFrame, groupby: Df, rolling_time_window: str = "60min"
 ) -> pd.DataFrame:
     df_copy = deepcopy(df)
+
     def mod_z(df_: pd.DataFrame) -> pd.Series:
         # transformed, _ = stats.yeojohnson(col.values)
         # col[col.columns[0]] = transformed.ravel()
@@ -143,7 +142,7 @@ def calc_zscore_results(
         )
         df_["med_abs_dev"] = roll["abs_dev"].median()
         # (X-MED)/(1.486*MAD)
-        mod_z = (col-df_["median"])/(1.486*df_["med_abs_dev"])
+        mod_z = (col - df_["median"]) / (1.486 * df_["med_abs_dev"])
         # mod_z = 0.6745 * ((col - df_["median"]) / df_["med_abs_dev"])
         mod_z.loc[df_["med_abs_dev"] == 0] = (col - df_["median"]) / (
             1.253314 * roll["abs_dev"].mean()
@@ -155,10 +154,8 @@ def calc_zscore_results(
         # group = df.groupby(by=groupby, group_keys=False)
         # group = df.loc[df.get(Df.QC_FLAG, pd.Series(0, index=df.index).map(QualityFlags)) <= QualityFlags(2)].groupby(
         df_ = df.loc[:]
-        df_.loc[df_.get(Df.QC_FLAG, pd.Series(0, index=df_.index).map(QualityFlags)) >= QualityFlags.PROBABLY_BAD, Df.RESULT] = pd.NA
-        group = df_.groupby(
-            by=groupby, group_keys=False
-        )
+        df_.loc[df_.get(Df.QC_FLAG, pd.Series(0, index=df_.index).map(QualityFlags)) >= QualityFlags.PROBABLY_BAD, Df.RESULT] = pd.NA  # type: ignore
+        group = df_.groupby(by=groupby, group_keys=False)
         # group = df[[Df.TIME, Df.RESULT, groupby]].groupby(by=groupby, group_keys=False)
         # z = group[[Df.TIME, Df.RESULT]].rolling(rolling_time_window=Df.TIME, center=True).apply(stats.zscore)
         z = group[[Df.TIME, Df.RESULT]].apply(mod_z)
@@ -254,13 +251,23 @@ def get_bool_flagged_dependent_quantity(
     return bool_
 
 
-def drop_duplicates_df_unpivot(df_unpivot: pd.DataFrame, independent: int, dependent: int) -> pd.DataFrame:
+def drop_duplicates_df_unpivot(
+    df_unpivot: pd.DataFrame, independent: int, dependent: int
+) -> pd.DataFrame:
     if df_unpivot.index.has_duplicates:
-        datastreams_with_duplicate_idx = list(df_unpivot[df_unpivot.index.duplicated(keep='first')][Df.DATASTREAM_ID].unique())
-        log.warning(f"Duplicated {Df.IOT_ID} found for {Df.DATASTREAM_ID} {datastreams_with_duplicate_idx}.")
-        log.warning(f"This might be due to duplicate entries for {set([independent, dependent]).difference(set(datastreams_with_duplicate_idx))}.")
+        datastreams_with_duplicate_idx = list(
+            df_unpivot[df_unpivot.index.duplicated(keep="first")][
+                Df.DATASTREAM_ID
+            ].unique()
+        )
+        log.warning(
+            f"Duplicated {Df.IOT_ID} found for {Df.DATASTREAM_ID} {datastreams_with_duplicate_idx}."
+        )
+        log.warning(
+            f"This might be due to duplicate entries for {set([independent, dependent]).difference(set(datastreams_with_duplicate_idx))}."
+        )
         log.warning(f"Duplicates will be removed.")
-        df_unpivot = df_unpivot[~df_unpivot.index.duplicated(keep='first')]
+        df_unpivot = df_unpivot[~df_unpivot.index.duplicated(keep="first")]
 
     return df_unpivot
 
@@ -289,14 +296,16 @@ def qc_dependent_quantity_base(
     ]
 
     df_unpivot = df_pivot.loc[mask].stack(future_stack=True).dropna(subset=Df.IOT_ID).reset_index().set_index(Df.IOT_ID)  # type: ignore
-    df_unpivot = drop_duplicates_df_unpivot(df_unpivot=df_unpivot, independent=independent, dependent=dependent)
-    
+    df_unpivot = drop_duplicates_df_unpivot(
+        df_unpivot=df_unpivot, independent=independent, dependent=dependent
+    )
+
     # df_unpivot = df_pivot.loc[mask].stack().reset_index().set_index(Df.IOT_ID)
     df = df.set_index(Df.IOT_ID)
     # TODO: refactor
     if return_only_dependent:
         df_unpivot = df_unpivot.loc[df_unpivot[Df.DATASTREAM_ID] == dependent]
-    mask_unpivot_notnan = (~df_unpivot[Df.QC_FLAG].isna())
+    mask_unpivot_notnan = ~df_unpivot[Df.QC_FLAG].isna()
     idx_unpivot_notnan = df_unpivot.loc[mask_unpivot_notnan, Df.QC_FLAG].index.astype(
         int
     )  # the conversion to int is needed because nan is float, and this column is set to float for some reason
@@ -335,7 +344,9 @@ def qc_dependent_quantity_secondary(
     df_pivot = df_pivot.drop(["qc_drange_min", "qc_drange_max"], axis=1, level=0)
     df_unpivot = df_pivot.stack(future_stack=True).dropna(subset=Df.IOT_ID).reset_index().set_index(Df.IOT_ID)  # type: ignore
 
-    df_unpivot = drop_duplicates_df_unpivot(df_unpivot=df_unpivot, independent=independent, dependent=dependent)
+    df_unpivot = drop_duplicates_df_unpivot(
+        df_unpivot=df_unpivot, independent=independent, dependent=dependent
+    )
 
     # df_unpivot = df_pivot.stack(future_stack=True).reset_index().set_index(Df.IOT_ID)  # type: ignore
     df = df.set_index(Df.IOT_ID)
