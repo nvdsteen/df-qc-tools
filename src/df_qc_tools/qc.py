@@ -280,6 +280,7 @@ def qc_dependent_quantity_base(
     flag_when_missing: QualityFlags | None = QualityFlags.BAD,
     return_only_dependent: bool = False,
 ) -> pd.Series:
+    log.debug(f"Start qc_dependent_quantity_base")
     df_tmp = strip_df_to_minimal_required_dependent_quantity(
         df, independent=independent, dependent=dependent
     )
@@ -327,6 +328,7 @@ def qc_dependent_quantity_secondary(
     range_: tuple[float, float],
     dt_tolerance: str,
 ) -> pd.Series:
+    log.debug(f"Start qc_dependent_quantity_secondary")
     df_tmp = strip_df_to_minimal_required_dependent_quantity(
         df, independent=independent, dependent=dependent
     )
@@ -572,10 +574,10 @@ class QCFlagConfig:
     bool_series: pd.Series = field(default_factory=pd.Series)
     series_out: pd.Series = field(default_factory=pd.Series)
 
-    def execute(self, df: pd.DataFrame | gpd.GeoDataFrame):
+    def execute(self, df: pd.DataFrame | gpd.GeoDataFrame, column: Df = Df.QC_FLAG):
         self.bool_series = self.bool_function(df)
         series_out = (
-            df[Df.QC_FLAG].combine(  # type: ignore
+            df[column].combine(  # type: ignore
                 get_qc_flag_from_bool(
                     bool_=self.bool_series,
                     flag_on_true=self.flag_on_true,
