@@ -3,6 +3,7 @@ import logging
 import operator
 from copy import deepcopy
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Callable
 
 import geopandas as gpd
@@ -373,6 +374,13 @@ def get_qc_flag_from_bool(
             ]
         )
     return qc_flag_series
+
+
+def get_bool_natural_earth_land(df: pd.DataFrame, path_shp: Path | str) -> pd.Series:
+    df_land = gpd.read_file(path_shp)
+    bool_out = df.sjoin(df_land, predicate="within", how="left")["index_right"].notnull()
+    bool_out = bool_out.reindex(df.index, fill_value=False)
+    return bool_out
 
 
 # TODO: refactor

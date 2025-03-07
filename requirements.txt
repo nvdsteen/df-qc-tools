@@ -1,13 +1,14 @@
-geopandas==0.14.3
+geopandas==1.0.1
 geopy==2.4.1
 hydra-core==1.3.2
-numpy==1.26.4
+numpy==2.2.3
 omegaconf==2.3.0
-pandas==2.2.1
-pytest==8.1.1
-scipy==1.12.0
-tqdm==4.66.2
-xarray==2024.2.0
+pandas==2.2.3
 
-pandassta>=0.0.11
-searegion_detection>=0.0.3
+pytest==8.3.5
+scipy==1.15.2
+tqdm==4.67.1
+xarray==2025.1.2
+
+pandassta>=0.0.17
+searegion-detection>=0.0.4
