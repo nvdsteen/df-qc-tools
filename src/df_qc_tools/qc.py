@@ -378,7 +378,9 @@ def get_qc_flag_from_bool(
 
 def get_bool_natural_earth_land(df: pd.DataFrame, path_shp: Path | str) -> pd.Series:
     df_land = gpd.read_file(path_shp)
-    bool_out = df.sjoin(df_land, predicate="within", how="left")["index_right"].notnull()
+    bool_out = df.sjoin(df_land, predicate="within", how="left")[
+        "index_right"
+    ].notnull()
     bool_out = bool_out.reindex(df.index, fill_value=False)
     return bool_out
 
@@ -537,8 +539,10 @@ def get_bool_exceed_max_acceleration(
     return bool_acceleration.loc[~acceleration_series.isnull()]
 
 
-def get_depth_from_etop(lat: pd.Series, lon: pd.Series):
-    datasetx = xr.open_dataset("./resources/ETOPO_2022_v1_60s_N90W180_bed.nc")
+def get_depth_from_etop(lat: pd.Series, lon: pd.Series, etop_file: str | Path = None):
+    if etop_file is None:
+        etop_file = Path("./resources/ETOPO_2022_v1_60s_N90W180_bed.nc")
+    datasetx = xr.open_dataset(etop_file)
 
     coords_dataarray = xr.DataArray(
         list(zip(lat, lon)), dims=["points", "coords"], name="coords"
@@ -552,22 +556,28 @@ def get_depth_from_etop(lat: pd.Series, lon: pd.Series):
     return z_values
 
 
-def get_bool_depth_below_threshold(df: pd.DataFrame, threshold: float) -> pd.Series:
-    mask_is_none = df[Df.REGION].isnull()  # type: ignore
-    df_coords_none_unique = df.loc[mask_is_none, [Df.LONG, Df.LAT]]  # type: ignore
+def get_bool_depth_below_threshold(
+    df: pd.DataFrame, threshold: float, mask_to_check: pd.Series = None, etop_file: str | Path = None
+) -> pd.Series:
+    if mask_to_check is None:
+        mask_to_check = df[Df.REGION].isnull()  # type: ignore
+    df_coords_none_unique = df.loc[mask_to_check, [Df.LONG, Df.LAT]]  # type: ignore
     bool_depth = (
         get_depth_from_etop(
             lat=df_coords_none_unique[Df.LAT],  # type: ignore
             lon=df_coords_none_unique[Df.LONG],  # type: ignore
+            etop_file=etop_file
         )
         < threshold
     )
-    bool_out = pd.Series(bool_depth, index=df.loc[mask_is_none].index)  # type: ignore
+    bool_out = pd.Series(bool_depth, index=df.loc[mask_to_check].index)  # type: ignore
     return bool_out
 
 
-def get_bool_depth_above_treshold(df: pd.DataFrame, threshold: float) -> pd.Series:
-    bool_out = get_bool_depth_below_threshold(df, threshold=threshold)
+def get_bool_depth_above_treshold(
+    df: pd.DataFrame, threshold: float, mask_to_check: pd.Series = None, etop_file: str | Path = None
+) -> pd.Series:
+    bool_out = get_bool_depth_below_threshold(df, threshold=threshold, mask_to_check=mask_to_check, etop_file=etop_file)
     return ~bool_out
 
 
