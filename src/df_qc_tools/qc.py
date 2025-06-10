@@ -594,19 +594,25 @@ class QCFlagConfig:
 
     def execute(self, df: pd.DataFrame | gpd.GeoDataFrame, column: Df = Df.QC_FLAG):
         self.bool_series = self.bool_function(df)
-        series_out = (
-            df[column].combine(  # type: ignore
-                get_qc_flag_from_bool(
-                    bool_=self.bool_series,
-                    flag_on_true=self.flag_on_true,
-                    flag_on_false=self.flag_on_false,
-                ),  # type: ignore
-                self.bool_merge_function,
-                fill_value=self.flag_on_nan,  # type: ignore
+        try:
+            series_out = (
+                df[column].combine(  # type: ignore
+                    get_qc_flag_from_bool(
+                        bool_=self.bool_series,
+                        flag_on_true=self.flag_on_true,
+                        flag_on_false=self.flag_on_false,
+                    ),  # type: ignore
+                    self.bool_merge_function,
+                    fill_value=self.flag_on_nan,  # type: ignore
+                )
+            ).astype(CAT_TYPE)
+            log.info(f"Execution {self.label} qc result: {self.bool_series.sum()} True")
+            self.series_out = series_out  # type: ignore
+        except KeyError as e:
+            log.error(f"KeyError in {self.label}. Verify if the key exists in the database.")
+            self.series_out = pd.Series(
+                self.flag_on_nan, index=self.bool_series.index, dtype=CAT_TYPE
             )
-        ).astype(CAT_TYPE)
-        log.info(f"Execution {self.label} qc result: {self.bool_series.sum()} True")
-        self.series_out = series_out  # type: ignore
         return self.series_out
 
 
