@@ -9,6 +9,7 @@ pytest==8.3.5
 scipy==1.15.2
 tqdm==4.67.1
 xarray==2025.1.2
+netCDF4==1.7.2
 
 pandassta>=0.0.18
 searegion-detection>=0.0.4
